@@ -42,15 +42,15 @@ let private tokenize program =
 let rec private anchorClosingBracket (program : string list) lastOpeningBracket = 
     match program with
     | head :: tail -> match head.[0] with
+                      | ']' -> [head + lastOpeningBracket.ToString()] @ (anchorClosingBracket tail lastOpeningBracket)
                       | '[' -> [head] @ (anchorClosingBracket tail (lastOpeningBracket + 1))
-                      | ']' -> ["]" + lastOpeningBracket.ToString()] @ (anchorClosingBracket tail lastOpeningBracket)
                       |  _  -> [head] @ (anchorClosingBracket tail lastOpeningBracket)
     | [] -> []
 
 let rec private anchorOpeningBracket (program : string list) nextClosingBracket = 
     match program with
     | head :: tail -> match head.[0] with
-                      | '[' -> ["[" + nextClosingBracket.ToString()] @ (anchorOpeningBracket tail nextClosingBracket)
+                      | '[' -> [head + nextClosingBracket.ToString()] @ (anchorOpeningBracket tail nextClosingBracket)
                       | ']' -> [head] @ (anchorClosingBracket tail (nextClosingBracket + 1))
                       |  _  -> [head] @ (anchorClosingBracket tail nextClosingBracket)
     | [] -> []
