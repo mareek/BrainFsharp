@@ -39,20 +39,15 @@ let private cleanProgram program =
 let private tokenize program =
     program |> List.map (fun c->c.ToString())
 
-let rec private anchorClosingBracket (program : string list) lastOpeningBracket = 
-    match program with
-    | head :: tail -> match head.[0] with
-                      | ']' -> [head + lastOpeningBracket.ToString()] @ (anchorClosingBracket tail lastOpeningBracket)
-                      | '[' -> [head] @ (anchorClosingBracket tail (lastOpeningBracket + 1))
-                      |  _  -> [head] @ (anchorClosingBracket tail lastOpeningBracket)
-    | [] -> []
+let private anotateBracket bracket label anchor =
+    bracket + label.ToString() + "-" + anchor.ToString()
 
-let rec private anchorOpeningBracket (program : string list) nextClosingBracket = 
+let rec private anotateBrackets program openCount closeCount = 
     match program with
-    | head :: tail -> match head.[0] with
-                      | '[' -> [head + nextClosingBracket.ToString()] @ (anchorOpeningBracket tail nextClosingBracket)
-                      | ']' -> [head] @ (anchorClosingBracket tail (nextClosingBracket + 1))
-                      |  _  -> [head] @ (anchorClosingBracket tail nextClosingBracket)
+    | head :: tail -> match head with
+                      | "[" -> [(anotateBracket head openCount (closeCount + 1))] @ (anotateBrackets tail (openCount + 1) closeCount)
+                      | "]" -> [(anotateBracket head closeCount openCount)] @ (anotateBrackets tail openCount (closeCount + 1))
+                      |  _  -> [head] @ (anotateBrackets tail openCount closeCount)
     | [] -> []
 
 let compile program outputFile = 
@@ -68,9 +63,6 @@ let compile program outputFile =
     let tokenizedProgram = tokenize cleanedProgram
     
     // associate closing bracket to anchor
-    let halfAnchoredProgram = anchorClosingBracket tokenizedProgram -1
-
-    // associate closing bracket to anchor
-    let fullyAnchoredProgram = anchorOpeningBracket halfAnchoredProgram 0
+    let anotatedProgram = anotateBrackets tokenizedProgram 0 0
 
     ()
