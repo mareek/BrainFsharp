@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Interpreter.fs" />
+    <Compile Include="ILBlocks.fs" />
     <Compile Include="Compiler.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />

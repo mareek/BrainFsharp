@@ -2,6 +2,7 @@
 
 open System
 open System.Text
+open ILBlocks
 
 // http://esolangs.org/wiki/Brainfuck
 //  >  Increment the pointer.
@@ -40,14 +41,41 @@ let private tokenize program =
     program |> List.map (fun c->c.ToString())
 
 let private anotateBracket bracket label anchor =
-    bracket + label.ToString() + "-" + anchor.ToString()
+    let destinationPrefix = match bracket with |"[" -> "]" | "]" -> "[" | _ -> ""
+    bracket + label.ToString() + "-" + destinationPrefix + anchor.ToString()
 
 let rec private anotateBrackets program openCount closeCount = 
     match program with
     | head :: tail -> match head with
-                      | "[" -> [(anotateBracket head openCount (closeCount + 1))] @ (anotateBrackets tail (openCount + 1) closeCount)
-                      | "]" -> [(anotateBracket head closeCount openCount)] @ (anotateBrackets tail openCount (closeCount + 1))
-                      |  _  -> [head] @ (anotateBrackets tail openCount closeCount)
+                      | "[" -> [(anotateBracket head openCount closeCount)] @ (anotateBrackets tail (openCount + 1) closeCount)
+                      | "]" -> [(anotateBracket head closeCount (openCount - 1))] @ (anotateBrackets tail openCount (closeCount + 1))
+                      |  _  -> head :: (anotateBrackets tail openCount closeCount)
+    | [] -> []
+
+let private getLabelAndDestination (anotatedBracket : string) = 
+    let parts = anotatedBracket.Split([|'-'|])
+    let replaceBrackets (str : string) = str.Replace('[', 'O').Replace(']', 'C')
+    let label = "_" + replaceBrackets parts.[0]
+    let destination = "_" + replaceBrackets parts.[1]
+    label, destination
+
+let private BracketToCIL (anotatedBracket : string) =
+    match anotatedBracket.[0] with
+    | '[' -> getILOpeningBracketBlock (getLabelAndDestination anotatedBracket)
+    | ']' -> getILClosingBracketBlock (getLabelAndDestination anotatedBracket)
+    |  _  -> failwith "just to remove warning"
+    
+
+let rec private toCIL program =
+    match program with
+    | head :: tail -> match head with
+                      | ">" -> ILIncrementPointerBlock @ toCIL tail
+                      | "<" -> ILDecrementPointerBlock @ toCIL tail
+                      | "+" -> ILIncrementValueBlock @ toCIL tail
+                      | "-" -> ILDecrementValueBlock @ toCIL tail
+                      | "." -> ILOutputBlock @ toCIL tail
+                      | "," -> ILInputBlock @ toCIL tail
+                      |  b  -> [b] @ toCIL tail
     | [] -> []
 
 let compile program outputFile = 
@@ -65,4 +93,9 @@ let compile program outputFile =
     // associate closing bracket to anchor
     let anotatedProgram = anotateBrackets tokenizedProgram 0 0
 
+    //convert to CIL
+    let CILProgram = toCIL anotatedProgram
+    
+    
+    //final step : compile with C:\Windows\Microsoft.NET\Framework\v4.0.30319\ilasm.exe 
     ()
