@@ -1,7 +1,8 @@
 ﻿open System
 open System.Text
-open Interpreter
 open System.IO
+open Interpreter
+open Compiler
 
 let openProgram (programFile : FileInfo) = 
     let programStream = programFile.OpenText()
@@ -10,8 +11,11 @@ let openProgram (programFile : FileInfo) =
 
 [<EntryPoint>]
 let main argv = 
+    
     if argv.Length = 0 then
-        getProgramOutput "[-]>[-]<>+++++++[<+++++++>-]<+++.--."
+        compile "[-]>[-]<>+++++++[<+++++++>-]<+++.--." ""
+        let input = Console.ReadLine()
+        ()
     elif File.Exists(argv.[0]) then
         openProgram (new FileInfo(argv.[0]))
     else

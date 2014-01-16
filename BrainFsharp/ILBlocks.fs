@@ -11,12 +11,21 @@
 //  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
 
 let ILInitBlock =  [".maxstack 10";
-                    ".locals init (int8[] tape, int32 pointer, int8 byteTemp, System.Char[] charBuffer, int8[] byteBuffer)";
+                    ".locals init (";
+                    "    uint8[] tape, ";
+                    "    int32 pointer, ";
+                    "    uint8 byteTemp, ";
+                    "    char charTemp, ";
+                    "    char[] charBuffer, ";
+                    "    uint8[] byteBuffer, ";
+                    "    class [mscorlib]System.Text.Encoding encoder)";
                     "ldc.i4.s 640000";
                     "newarr int32";
                     "stloc tape";
                     "ldc.i4.0";
-                    "stloc pointer"]
+                    "stloc pointer";
+                    "call class [mscorlib]System.Text.Encoding [mscorlib]System.Text.ASCIIEncoding::get_ASCII()";
+                    "stloc encoder"]
 
 let ILIncrementPointerBlock = ["ldloc pointer";
                                "ldc.i4.1";
@@ -28,49 +37,71 @@ let ILDecrementPointerBlock = ["ldloc pointer";
                                "sub";
                                "stloc pointer"]
 
-let ILIncrementValueBlock = ["ldloc tape";
-                             "ldloc pointer";
-                             "ldelem.u1";
-                             "ldc.i1.1";
+let private ILLoadPointerValueBlock = ["ldloc tape";
+                                       "ldloc pointer";
+                                       "ldelem.u1"]
+
+let private ILStorePointerValueBlock = ["ldloc tape";
+                                        "ldloc pointer";
+                                        "ldloc byteTemp";
+                                        "stelem.i1"]
+
+
+let ILIncrementValueBlock = ILLoadPointerValueBlock @
+                            ["ldc.i4.1";
                              "add";
-                             "stloc byteTemp"
-                             "ldloc tape";
-                             "ldloc pointer";
-                             "ldloc byteTemp";
-                             "stelem"]
+                             "stloc byteTemp"] @
+                            ILStorePointerValueBlock
 
-let ILDecrementValueBlock = ["ldloc tape";
-                             "ldloc pointer";
-                             "ldelem.u1";
-                             "ldc.i1.1";
+let ILDecrementValueBlock = ILLoadPointerValueBlock @
+                            ["ldc.i4.1";
                              "sub";
-                             "stloc byteTemp"
-                             "ldloc tape";
-                             "ldloc pointer";
-                             "ldloc byteTemp";
-                             "stelem"]
+                             "stloc byteTemp"] @
+                            ILStorePointerValueBlock
 
-let ILOutputBlock = ["ldloc tape";
-                     "ldloc pointer";
-                     "ldelem.u1";
-                     "stloc byteTemp";
+let ILOutputBlock = ILLoadPointerValueBlock @
+                    ["stloc byteTemp";
                      "ldc.i4.1";
-                     "newarr int8";
-                     "stloc bytebuffer";
-                     "ldloc bytebuffer";
+                     "newarr uint8";
+                     "stloc byteBuffer";
+                     "ldloc byteBuffer";
                      "ldc.i4.0";
                      "ldloc byteTemp";
-                     "stelem";
-                     "ldloc bytebuffer";
-                     "call System.Char[] [mscorlib]System.Text.ASCIIEncoding::GetChars(int8[])";
+                     "stelem.i1";
+                     "ldloc encoder";
+                     "ldloc byteBuffer";
+                     "callvirt instance char[] [mscorlib]System.Text.ASCIIEncoding::GetChars(uint8[])";
                      "ldc.i4.0";
-                     "ldelem";
-                     "call void [mscorlib]System.Console::Write(System.Char)"]
+                     "ldelem.i2";
+                     "call void [mscorlib]System.Console::Write(char)"]
 
-let ILInputBlock = ["";""]
+let ILInputBlock = ["ldc.i4.1";
+                    "call System.ConsoleKeyInfo [mscorlib] System.Console::ReadKey(bool)";
+                    "callvirt instance char [mscorlib]System.ConsoleKeyInfo::get_KeyChar()";
+                    "stloc charTemp";
+                    "ldc.i4.1";
+                    "newarr char";
+                    "stloc charBuffer";
+                    "ldloc charBuffer";
+                    "ldc.i4.0";
+                    "ldloc charTemp";
+                    "stelem";
+                    "ldloc encoder";
+                    "ldloc charBuffer";
+                    "callvirt instance uint8[] [mscorlib]System.Text.ASCIIEncoding::GetBytes(char[])";
+                    "ldc.i4.0";
+                    "ldElem.i1";
+                    "stloc byteTemp"] @
+                    ILStorePointerValueBlock
 
+//  [  Jump forward past the matching ] if the byte at the pointer is zero.
 let getILOpeningBracketBlock label destination = 
-    ["";""]
+    ILLoadPointerValueBlock @
+    ["brfalse " + destination;
+     label + " :"]
 
+//  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
 let getILClosingBracketBlock label destination = 
-    ["";""]
+    ILLoadPointerValueBlock @
+    ["brtrue " + destination;
+     label + " :"]

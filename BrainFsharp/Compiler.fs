@@ -60,10 +60,11 @@ let private getLabelAndDestination (anotatedBracket : string) =
     label, destination
 
 let private BracketToCIL (anotatedBracket : string) =
+    let label, destination = getLabelAndDestination anotatedBracket
     match anotatedBracket.[0] with
-    | '[' -> getILOpeningBracketBlock (getLabelAndDestination anotatedBracket)
-    | ']' -> getILClosingBracketBlock (getLabelAndDestination anotatedBracket)
-    |  _  -> failwith "just to remove warning"
+    | '[' -> getILOpeningBracketBlock label destination
+    | ']' -> getILClosingBracketBlock label destination
+    |  _  -> failwith "there's a bug in my code dear liza"
     
 
 let rec private toCIL program =
@@ -75,11 +76,11 @@ let rec private toCIL program =
                       | "-" -> ILDecrementValueBlock @ toCIL tail
                       | "." -> ILOutputBlock @ toCIL tail
                       | "," -> ILInputBlock @ toCIL tail
-                      |  b  -> [b] @ toCIL tail
+                      |  b  -> (BracketToCIL b)  @ toCIL tail
     | [] -> []
 
-let compile program outputFile = 
-    let programAsList = Array.toList program
+let compile (program : string) outputFile = 
+    let programAsList = Array.toList (program.ToCharArray())
 
     // clean program from garbage chars
     let cleanedProgram = cleanProgram programAsList
@@ -94,8 +95,13 @@ let compile program outputFile =
     let anotatedProgram = anotateBrackets tokenizedProgram 0 0
 
     //convert to CIL
-    let CILProgram = toCIL anotatedProgram
+    let cilProgram = toCIL anotatedProgram
     
+    let fullMainBody = ILBlocks.ILInitBlock @ cilProgram
+
+    let longString = String.Join("\r\n", (List.toArray fullMainBody)) 
+
+    Console.WriteLine(longString)
     
     //final step : compile with C:\Windows\Microsoft.NET\Framework\v4.0.30319\ilasm.exe 
     ()
