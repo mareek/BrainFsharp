@@ -46,14 +46,13 @@ let rec private step (program : string) tape instruction pointer =
         | '<' -> step program tape (instruction + 1) (pointer - 1)
         | '+' -> step program (changeTapeValue tape pointer (tape.[pointer] + 1uy)) (instruction + 1) pointer
         | '-' -> step program (changeTapeValue tape pointer (tape.[pointer] - 1uy)) (instruction + 1) pointer
-        | '.' -> UnicodeEncoding.UTF8.GetString(tape, pointer, 1)  + (step program tape (instruction + 1) pointer)
+        | '.' -> Encoding.ASCII.GetString(tape, pointer, 1)  + (step program tape (instruction + 1) pointer)
         | ',' -> "" //TODO
         | '[' -> step program tape (processOpenBracket program instruction (tape.[pointer] = 0uy)) pointer
         | ']' -> step program tape (processCloseBracket program instruction (tape.[pointer] <> 0uy)) pointer
         // not an instruction
-        |  _  -> ""
+        |  _  -> step program tape (instruction + 1) pointer
 
 let getProgramOutput program =
     let tape = Array.create 640000 0uy; //ought to be enough for anybody
-    let output = (step program tape 0 0)
-    Console.WriteLine output
+    step program tape 0 0

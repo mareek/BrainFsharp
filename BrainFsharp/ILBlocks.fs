@@ -19,7 +19,7 @@ let ILInitProgramBlock = [".assembly extern mscorlib {}";
 let ILEndProgramBlock = ["ret";
                          "}";]
 
-let ILInitMethodBlock =  [".maxstack 10";
+let ILInitMethodBlock =  [".maxstack 10"; //The actual max stack might be closer to 5 or 6 but I'm to lazy to find the exact value
                           ".locals init (";
                           "    uint8[] tape, ";
                           "    int32 pointer, ";
@@ -30,7 +30,7 @@ let ILInitMethodBlock =  [".maxstack 10";
                           "    class [mscorlib]System.Text.Encoding encoder, ";
                           "    valuetype [mscorlib]System.ConsoleKeyInfo keyInfo ";
                           ")";
-                          "ldc.i4 640000";
+                          "ldc.i4 640000"; // ought to be enough for anybody
                           "newarr int32";
                           "stloc tape";
                           "ldc.i4.0";
@@ -109,13 +109,11 @@ let ILInputBlock = ["ldc.i4.1";
                     "stloc byteTemp"] @
                     ILStorePointerValueBlock
 
-//  [  Jump forward past the matching ] if the byte at the pointer is zero.
 let getILOpeningBracketBlock label destination = 
     label + " :" ::
     ILLoadPointerValueBlock @
     ["brfalse " + destination;]
 
-//  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
 let getILClosingBracketBlock label destination = 
     ["br " + destination;
      label + " :"]

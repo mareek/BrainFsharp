@@ -1,6 +1,7 @@
 ﻿module Compiler
 
 open System
+open System.Diagnostics
 open System.IO
 open System.Text
 
@@ -17,20 +18,21 @@ open ILBlocks
 //  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
 
 let private verifyProgram program = 
-    let hasOpeningBracket = program |> List.exists ((=) '[')
-    let hasClosingBracket = program |> List.exists ((=) ']')
+    let firstOpeningBracketIndex = program |> List.tryFindIndex  ((=) '[')
+    let firstClosingBracketIndex = program |> List.tryFindIndex  ((=) ']')
+    let hasOpeningBracket = firstOpeningBracketIndex <> None
+    let hasClosingBracket = firstClosingBracketIndex <> None
 
-    if hasClosingBracket <> hasOpeningBracket then
+    if hasOpeningBracket <> hasClosingBracket then
+        failwith "brackets do not match!"
+    elif hasOpeningBracket  && firstClosingBracketIndex < firstOpeningBracketIndex then
         failwith "brackets do not match!"
     elif hasOpeningBracket then
-        let firstOpeningBracketIndex = program |> List.findIndex  ((=) '[')
-        let firstClosingBracketIndex = program |> List.findIndex  ((=) ']')
-    
         let revProgram = program |> List.rev
         let lastOpeningBracketIndex = program.Length - 1 - (revProgram |> List.findIndex  ((=) '['))
         let lastClosingBracketIndex = program.Length - 1 - (revProgram |> List.findIndex  ((=) ']'))
 
-        if firstClosingBracketIndex < firstOpeningBracketIndex || lastOpeningBracketIndex > lastOpeningBracketIndex then
+        if lastOpeningBracketIndex > lastOpeningBracketIndex then
             failwith "brackets do not match!"
 
 
@@ -56,7 +58,7 @@ let rec private anotateBrackets program openCount closeCount =
 
 let private getLabelAndDestination (anotatedBracket : string) = 
     let parts = anotatedBracket.Split([|'-'|])
-    let replaceBrackets (str : string) = str.Replace('[', 'O').Replace(']', 'C')
+    let replaceBrackets (str : string) = str.Replace("[", "StartLoop_").Replace("]", "EndLoop_")
     let label = "_" + replaceBrackets parts.[0]
     let destination = "_" + replaceBrackets parts.[1]
     label, destination
@@ -66,7 +68,7 @@ let private BracketToCIL (anotatedBracket : string) =
     match anotatedBracket.[0] with
     | '[' -> getILOpeningBracketBlock label destination
     | ']' -> getILClosingBracketBlock label destination
-    |  _  -> failwith "there's a bug in my code dear liza"
+    |  _  -> failwith ("This code should be unreachable - " + anotatedBracket)
     
 
 let rec private toCIL program =
@@ -99,6 +101,7 @@ let compile (program : string) (outputFile : string) =
     //convert to CIL
     let ilProgram = toCIL anotatedProgram
     
+    //add initilization code
     let ilMainBody = ILInitMethodBlock @ ilProgram
 
     let ilFull = ILInitProgramBlock @ ilMainBody @ ILEndProgramBlock
@@ -109,15 +112,11 @@ let compile (program : string) (outputFile : string) =
     try
         File.WriteAllText(tempIlFile, ilFullString)
         let compilerPath = @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\ilasm.exe"
-        let commandLineArgumentsTemplate = "\"{0}\" /output=\"{1}\""
-        let commandLineArguments = String.Format(commandLineArgumentsTemplate, tempIlFile, outputFile)
-        let processInfo = new System.Diagnostics.ProcessStartInfo(compilerPath, commandLineArguments)
-        processInfo.RedirectStandardOutput <- true
+        let commandLineArguments = String.Format("/NOLOGO /QUIET \"{0}\" /output=\"{1}\"", tempIlFile, outputFile)
+        let processInfo = new ProcessStartInfo(compilerPath, commandLineArguments)
         processInfo.UseShellExecute <- false
-        let compileProcess = System.Diagnostics.Process.Start(processInfo)
-        let compileOutput = compileProcess.StandardOutput.ReadToEnd()
-        Console.WriteLine compileOutput
-        ()
+        let compileProcess = Process.Start(processInfo)
+        compileProcess.WaitForExit()
+        Console.WriteLine "BrainFuck program successully compiled !"
     finally
         File.Delete tempIlFile
-    ()
