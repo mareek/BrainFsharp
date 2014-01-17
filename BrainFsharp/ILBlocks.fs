@@ -27,7 +27,9 @@ let ILInitMethodBlock =  [".maxstack 10";
                           "    char charTemp, ";
                           "    char[] charBuffer, ";
                           "    uint8[] byteBuffer, ";
-                          "    class [mscorlib]System.Text.Encoding encoder)";
+                          "    class [mscorlib]System.Text.Encoding encoder, ";
+                          "    valuetype [mscorlib]System.ConsoleKeyInfo keyInfo ";
+                          ")";
                           "ldc.i4 640000";
                           "newarr int32";
                           "stloc tape";
@@ -56,17 +58,19 @@ let private ILStorePointerValueBlock = ["ldloc tape";
                                         "stelem.i1"]
 
 
-let ILIncrementValueBlock = ILLoadPointerValueBlock @
+let ILIncrementValueBlock = ["ldloc tape";
+                             "ldloc pointer"]
+                            @ ILLoadPointerValueBlock @
                             ["ldc.i4.1";
                              "add";
-                             "stloc byteTemp"] @
-                            ILStorePointerValueBlock
+                             "stelem.i1"]
 
-let ILDecrementValueBlock = ILLoadPointerValueBlock @
+let ILDecrementValueBlock = ["ldloc tape";
+                             "ldloc pointer"]
+                            @ ILLoadPointerValueBlock @
                             ["ldc.i4.1";
                              "sub";
-                             "stloc byteTemp"] @
-                            ILStorePointerValueBlock
+                             "stelem.i1"]
 
 let ILOutputBlock = ILLoadPointerValueBlock @
                     ["stloc byteTemp";
@@ -85,8 +89,10 @@ let ILOutputBlock = ILLoadPointerValueBlock @
                      "call void [mscorlib]System.Console::Write(char)"]
 
 let ILInputBlock = ["ldc.i4.1";
-                    "call System.ConsoleKeyInfo [mscorlib] System.Console::ReadKey(bool)";
-                    "callvirt instance char [mscorlib]System.ConsoleKeyInfo::get_KeyChar()";
+                    "call valuetype [mscorlib]System.ConsoleKeyInfo [mscorlib]System.Console::ReadKey(bool)";
+                    "stloc keyInfo";
+                    "ldloca keyInfo";
+                    "call instance char [mscorlib]System.ConsoleKeyInfo::get_KeyChar()";
                     "stloc charTemp";
                     "ldc.i4.1";
                     "newarr char";
@@ -94,23 +100,22 @@ let ILInputBlock = ["ldc.i4.1";
                     "ldloc charBuffer";
                     "ldc.i4.0";
                     "ldloc charTemp";
-                    "stelem";
+                    "stelem.i2";
                     "ldloc encoder";
                     "ldloc charBuffer";
                     "callvirt instance uint8[] [mscorlib]System.Text.ASCIIEncoding::GetBytes(char[])";
                     "ldc.i4.0";
-                    "ldElem.i1";
+                    "ldelem.i1";
                     "stloc byteTemp"] @
                     ILStorePointerValueBlock
 
 //  [  Jump forward past the matching ] if the byte at the pointer is zero.
 let getILOpeningBracketBlock label destination = 
+    label + " :" ::
     ILLoadPointerValueBlock @
-    ["brfalse " + destination;
-     label + " :"]
+    ["brfalse " + destination;]
 
 //  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
 let getILClosingBracketBlock label destination = 
-    ILLoadPointerValueBlock @
-    ["brtrue " + destination;
+    ["br " + destination;
      label + " :"]

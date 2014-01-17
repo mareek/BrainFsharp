@@ -111,7 +111,12 @@ let compile (program : string) (outputFile : string) =
         let compilerPath = @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\ilasm.exe"
         let commandLineArgumentsTemplate = "\"{0}\" /output=\"{1}\""
         let commandLineArguments = String.Format(commandLineArgumentsTemplate, tempIlFile, outputFile)
-        let compileProcess = System.Diagnostics.Process.Start(compilerPath, commandLineArguments)
+        let processInfo = new System.Diagnostics.ProcessStartInfo(compilerPath, commandLineArguments)
+        processInfo.RedirectStandardOutput <- true
+        processInfo.UseShellExecute <- false
+        let compileProcess = System.Diagnostics.Process.Start(processInfo)
+        let compileOutput = compileProcess.StandardOutput.ReadToEnd()
+        Console.WriteLine compileOutput
         ()
     finally
         File.Delete tempIlFile
