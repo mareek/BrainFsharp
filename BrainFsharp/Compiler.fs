@@ -1,7 +1,9 @@
 ﻿module Compiler
 
 open System
+open System.IO
 open System.Text
+
 open ILBlocks
 
 // http://esolangs.org/wiki/Brainfuck
@@ -79,7 +81,7 @@ let rec private toCIL program =
                       |  b  -> (BracketToCIL b)  @ toCIL tail
     | [] -> []
 
-let compile (program : string) outputFile = 
+let compile (program : string) (outputFile : string) = 
     let programAsList = Array.toList (program.ToCharArray())
 
     // clean program from garbage chars
@@ -95,13 +97,22 @@ let compile (program : string) outputFile =
     let anotatedProgram = anotateBrackets tokenizedProgram 0 0
 
     //convert to CIL
-    let cilProgram = toCIL anotatedProgram
+    let ilProgram = toCIL anotatedProgram
     
-    let fullMainBody = ILBlocks.ILInitBlock @ cilProgram
+    let ilMainBody = ILInitMethodBlock @ ilProgram
 
-    let longString = String.Join("\r\n", (List.toArray fullMainBody)) 
+    let ilFull = ILInitProgramBlock @ ilMainBody @ ILEndProgramBlock
 
-    Console.WriteLine(longString)
-    
-    //final step : compile with C:\Windows\Microsoft.NET\Framework\v4.0.30319\ilasm.exe 
+    let ilFullString = String.Join("\r\n", (List.toArray ilFull)) 
+
+    let tempIlFile = Path.GetTempFileName()
+    try
+        File.WriteAllText(tempIlFile, ilFullString)
+        let compilerPath = @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\ilasm.exe"
+        let commandLineArgumentsTemplate = "\"{0}\" /output=\"{1}\""
+        let commandLineArguments = String.Format(commandLineArgumentsTemplate, tempIlFile, outputFile)
+        let compileProcess = System.Diagnostics.Process.Start(compilerPath, commandLineArguments)
+        ()
+    finally
+        File.Delete tempIlFile
     ()

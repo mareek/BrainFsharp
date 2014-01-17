@@ -13,7 +13,7 @@ let openProgram (programFile : FileInfo) =
 let main argv = 
     
     if argv.Length = 0 then
-        compile "[-]>[-]<>+++++++[<+++++++>-]<+++.--." ""
+        compile "[-]>[-]<>+++++++[<+++++++>-]<+++.--." @"C:\Users\Matthieu\Desktop\TheRealBrainfuck.exe"
         let input = Console.ReadLine()
         ()
     elif File.Exists(argv.[0]) then

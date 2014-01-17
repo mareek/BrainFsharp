@@ -10,22 +10,31 @@
 //  [  Jump forward past the matching ] if the byte at the pointer is zero.
 //  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
 
-let ILInitBlock =  [".maxstack 10";
-                    ".locals init (";
-                    "    uint8[] tape, ";
-                    "    int32 pointer, ";
-                    "    uint8 byteTemp, ";
-                    "    char charTemp, ";
-                    "    char[] charBuffer, ";
-                    "    uint8[] byteBuffer, ";
-                    "    class [mscorlib]System.Text.Encoding encoder)";
-                    "ldc.i4.s 640000";
-                    "newarr int32";
-                    "stloc tape";
-                    "ldc.i4.0";
-                    "stloc pointer";
-                    "call class [mscorlib]System.Text.Encoding [mscorlib]System.Text.ASCIIEncoding::get_ASCII()";
-                    "stloc encoder"]
+let ILInitProgramBlock = [".assembly extern mscorlib {}";
+                          ".assembly brainfuck {}";
+                          ".method static void main()";
+                          "{";
+                          ".entrypoint"]
+
+let ILEndProgramBlock = ["ret";
+                         "}";]
+
+let ILInitMethodBlock =  [".maxstack 10";
+                          ".locals init (";
+                          "    uint8[] tape, ";
+                          "    int32 pointer, ";
+                          "    uint8 byteTemp, ";
+                          "    char charTemp, ";
+                          "    char[] charBuffer, ";
+                          "    uint8[] byteBuffer, ";
+                          "    class [mscorlib]System.Text.Encoding encoder)";
+                          "ldc.i4 640000";
+                          "newarr int32";
+                          "stloc tape";
+                          "ldc.i4.0";
+                          "stloc pointer";
+                          "call class [mscorlib]System.Text.Encoding [mscorlib]System.Text.ASCIIEncoding::get_ASCII()";
+                          "stloc encoder"]
 
 let ILIncrementPointerBlock = ["ldloc pointer";
                                "ldc.i4.1";
