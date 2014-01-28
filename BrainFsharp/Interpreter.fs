@@ -37,6 +37,10 @@ let private changeTapeValue (tape : Byte[]) pointer newValue =
     Array.set tape pointer newValue
     tape
 
+let private getInput() = 
+    let inputChar = System.Console.ReadKey(true).KeyChar
+    Encoding.ASCII.GetBytes([|inputChar|]).[0]
+
 let rec private step (program : string) tape instruction pointer =
     if instruction >= program.Length then
         "" 
@@ -46,8 +50,8 @@ let rec private step (program : string) tape instruction pointer =
         | '<' -> step program tape (instruction + 1) (pointer - 1)
         | '+' -> step program (changeTapeValue tape pointer (tape.[pointer] + 1uy)) (instruction + 1) pointer
         | '-' -> step program (changeTapeValue tape pointer (tape.[pointer] - 1uy)) (instruction + 1) pointer
-        | '.' -> Encoding.ASCII.GetString(tape, pointer, 1)  + (step program tape (instruction + 1) pointer)
-        | ',' -> "" //TODO
+        | '.' -> Encoding.ASCII.GetString(tape, pointer, 1) + (step program tape (instruction + 1) pointer)
+        | ',' -> step program (changeTapeValue tape pointer (getInput())) (instruction + 1) pointer
         | '[' -> step program tape (processOpenBracket program instruction (tape.[pointer] = 0uy)) pointer
         | ']' -> step program tape (processCloseBracket program instruction (tape.[pointer] <> 0uy)) pointer
         // not an instruction

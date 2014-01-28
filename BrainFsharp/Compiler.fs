@@ -45,14 +45,17 @@ let private tokenize program =
     program |> List.map (fun c->c.ToString())
 
 let private anotateBracket bracket label anchor =
-    let destinationPrefix = match bracket with |"[" -> "]" | "]" -> "[" | _ -> ""
+    let destinationPrefix = match bracket with 
+                            | "[" -> "]" 
+                            | "]" -> "[" 
+                            |  _  -> ""
     bracket + label.ToString() + "-" + destinationPrefix + anchor.ToString()
 
 let rec private anotateBrackets program openCount closeCount = 
     match program with
     | head :: tail -> match head with
-                      | "[" -> [(anotateBracket head openCount closeCount)] @ (anotateBrackets tail (openCount + 1) closeCount)
-                      | "]" -> [(anotateBracket head closeCount (openCount - 1))] @ (anotateBrackets tail openCount (closeCount + 1))
+                      | "[" -> (anotateBracket head openCount closeCount) :: (anotateBrackets tail (openCount + 1) closeCount)
+                      | "]" -> (anotateBracket head closeCount (openCount - 1)) :: (anotateBrackets tail openCount (closeCount + 1))
                       |  _  -> head :: (anotateBrackets tail openCount closeCount)
     | [] -> []
 
@@ -86,7 +89,7 @@ let rec private toCIL program =
 let compile (program : string) (outputFile : string) = 
     let programAsList = Array.toList (program.ToCharArray())
 
-    // clean program from garbage chars
+    // clean program from garbage chars and comments
     let cleanedProgram = cleanProgram programAsList
     
     //check program correctness
@@ -108,6 +111,7 @@ let compile (program : string) (outputFile : string) =
 
     let ilFullString = String.Join("\r\n", (List.toArray ilFull)) 
 
+    //assemble the result into an exe with ilasm.
     let tempIlFile = Path.GetTempFileName()
     try
         File.WriteAllText(tempIlFile, ilFullString)
