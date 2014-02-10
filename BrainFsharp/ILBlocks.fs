@@ -110,10 +110,11 @@ let ILInputBlock = ["ldc.i4.1";
                     ILStorePointerValueBlock
 
 let getILOpeningBracketBlock label destination = 
-    label + " :" ::
     ILLoadPointerValueBlock @
-    ["brfalse " + destination;]
+    ["brfalse " + destination;
+     label + " :"]
 
 let getILClosingBracketBlock label destination = 
-    ["br " + destination;
+    ILLoadPointerValueBlock @
+    ["brtrue " + destination;
      label + " :"]
