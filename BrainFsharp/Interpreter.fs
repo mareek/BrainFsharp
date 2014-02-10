@@ -12,51 +12,70 @@ open System.Text
 //  ,  Input a byte and store it in the byte at the pointer.
 //  [  Jump forward past the matching ] if the byte at the pointer is zero.
 //  ]  Jump backward to the matching [ unless the byte at the pointer is zero.
+let ascii = ASCIIEncoding.ASCII
 
-let rec private findMatchingBracket (program : String) instruction direction matchingBracket = 
-    if instruction >= program.Length || instruction < 0 then
-        failwith "no matching bracket"
-    elif program.[instruction] = matchingBracket then
-        instruction
-    else
-        findMatchingBracket program (instruction + direction) direction matchingBracket
-
-let private processBracket program instruction jump direction matchingBracket =
-    if not jump then
-        1 + instruction
-    else
-        1 + findMatchingBracket program instruction direction matchingBracket
-
-let private processOpenBracket program instruction jump =
-    processBracket program instruction jump 1 ']'
-
-let private processCloseBracket program instruction jump =
-    processBracket program instruction jump -1 '['
-
-let private changeTapeValue (tape : Byte[]) pointer newValue = 
+let private setTapeValue (tape : byte[]) (pointer : int) newValue =
     Array.set tape pointer newValue
     tape
 
-let private getInput() = 
-    let inputChar = System.Console.ReadKey(true).KeyChar
-    Encoding.ASCII.GetBytes([|inputChar|]).[0]
+let private increment tape pointer =
+    setTapeValue tape pointer (tape.[pointer] + 1uy)
+    
+let private decrement tape pointer =
+    setTapeValue tape pointer (tape.[pointer] - 1uy)
 
-let rec private step (program : string) tape instruction pointer =
-    if instruction >= program.Length then
-        "" 
-    else
-        match program.[instruction] with
-        | '>' -> step program tape (instruction + 1) (pointer + 1)
-        | '<' -> step program tape (instruction + 1) (pointer - 1)
-        | '+' -> step program (changeTapeValue tape pointer (tape.[pointer] + 1uy)) (instruction + 1) pointer
-        | '-' -> step program (changeTapeValue tape pointer (tape.[pointer] - 1uy)) (instruction + 1) pointer
-        | '.' -> Encoding.ASCII.GetString(tape, pointer, 1) + (step program tape (instruction + 1) pointer)
-        | ',' -> step program (changeTapeValue tape pointer (getInput())) (instruction + 1) pointer
-        | '[' -> step program tape (processOpenBracket program instruction (tape.[pointer] = 0uy)) pointer
-        | ']' -> step program tape (processCloseBracket program instruction (tape.[pointer] <> 0uy)) pointer
-        // not an instruction
-        |  _  -> step program tape (instruction + 1) pointer
+let private input tape pointer =
+    setTapeValue tape pointer (ascii.GetBytes([|Console.ReadKey(true).KeyChar|]).[0])
 
-let getProgramOutput program =
-    let tape = Array.create 640000 0uy; //ought to be enough for anybody
-    step program tape 0 0
+let private output (tape : byte[]) (pointer : int) =
+    Console.Write(ascii.GetChars([|tape.[pointer]|]))
+    tape
+
+let rec private splitList listToSearch leftover charSplit = 
+    match listToSearch with
+    | head :: tail when head = charSplit -> (tail, leftover)
+    | head :: tail -> splitList tail (head::leftover) charSplit
+    | [] -> ([], leftover)
+
+let rec private stepThroughProgram prevChars nextChars pointer tape = 
+    match nextChars with
+    | head :: tail -> match head with
+                      | '>' -> stepThroughProgram (head :: prevChars) tail (pointer + 1) tape
+                      | '<' -> stepThroughProgram (head :: prevChars) tail (pointer - 1) tape
+                      | '+' -> stepThroughProgram (head :: prevChars) tail pointer (increment tape pointer)
+                      | '-' -> stepThroughProgram (head :: prevChars) tail pointer (decrement tape pointer)
+                      | '.' -> stepThroughProgram (head :: prevChars) tail pointer (output tape pointer)
+                      | ',' -> stepThroughProgram (head :: prevChars) tail pointer (input tape pointer)
+                      | '[' -> handleStartLoop prevChars nextChars pointer tape
+                      | ']' -> handleEndLoop prevChars nextChars pointer tape
+                      |  _  -> stepThroughProgram prevChars tail pointer tape
+    | [] -> ()
+
+and private handleStartLoop prevChars nextChars pointer tape = 
+    let jump() = 
+        let nextIfJump, prevIfJump = splitList nextChars prevChars ']'
+        stepThroughProgram (']' :: prevIfJump) nextIfJump pointer tape
+    
+    let head = nextChars|> List.head
+    let tail = nextChars|> List.tail
+
+    match tape.[pointer] with
+    | 0uy -> jump()
+    |  _  -> stepThroughProgram (head :: prevChars) tail pointer tape
+
+and private handleEndLoop prevChars nextChars pointer tape = 
+    let jump() = 
+        let prevIfJump, nextIfJump = splitList prevChars nextChars '['
+        stepThroughProgram ('[' :: prevIfJump) nextIfJump pointer tape
+    
+    let head = nextChars|> List.head
+    let tail = nextChars|> List.tail
+
+    match tape.[pointer] with
+    | 0uy -> stepThroughProgram (head :: prevChars) tail pointer tape
+    |  _  -> jump()
+
+let interpretBrainfuckProgram (program : string) = 
+    let tape = Array.create 640000 0uy //ought to be enough for anybody
+    let programAsList = Array.toList (program.ToCharArray())
+    stepThroughProgram [] programAsList 0 tape
