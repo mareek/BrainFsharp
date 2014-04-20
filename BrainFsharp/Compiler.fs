@@ -89,16 +89,16 @@ let rec private toCIL program =
 let compile (program : string) (outputFile : string) = 
     let programAsList = Array.toList (program.ToCharArray())
 
-    // clean program from garbage chars and comments
+    //clean program from garbage chars and comments
     let cleanedProgram = cleanProgram programAsList
     
     //check program correctness
     verifyProgram cleanedProgram
 
-    // char to strings + add anchors
+    //char to strings + add anchors
     let tokenizedProgram = tokenize cleanedProgram
     
-    // associate closing bracket to anchor
+    //associate closing bracket to anchor
     let anotatedProgram = anotateBrackets tokenizedProgram 0 0
 
     //convert to CIL
